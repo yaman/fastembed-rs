@@ -96,7 +96,7 @@ use tokenizers::{AddedToken, PaddingParams, PaddingStrategy, TruncationParams};
 const DEFAULT_BATCH_SIZE: usize = 256;
 const DEFAULT_MAX_LENGTH: usize = 512;
 const DEFAULT_CACHE_DIR: &str = "local_cache";
-const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::BGESmallENV15;
+const DEFAULT_EMBEDDING_MODEL: EmbeddingModel = EmbeddingModel::MLE5Small;
 
 /// Type alias for the embedding vector
 pub type Embedding = Vec<f32>;
@@ -126,6 +126,7 @@ pub enum EmbeddingModel {
     BGESmallZH,
     /// Multilingual model, e5-large. Recommend using this model for non-English languages.
     MLE5Large,
+    MLE5Small,
 }
 
 impl ToString for EmbeddingModel {
@@ -138,6 +139,7 @@ impl ToString for EmbeddingModel {
             EmbeddingModel::BGESmallENV15 => String::from("fast-bge-small-en-v1.5"),
             EmbeddingModel::BGESmallZH => String::from("fast-bge-small-zh-v1.5"),
             EmbeddingModel::MLE5Large => String::from("fast-multilingual-e5-large"),
+            EmbeddingModel::MLE5Small => String::from("fast-multilingual-e5-small"),
         }
     }
 }
@@ -385,6 +387,11 @@ impl FlagEmbedding {
             model: EmbeddingModel::MLE5Large,
             dim: 1024,
             description: String::from("Multilingual model, e5-large. Recommend using this model for non-English languages."),
+        },
+        ModelInfo {
+            model: EmbeddingModel::MLE5Small,
+            dim: 384,
+            description: String::from("Multilingual model, faster but less accurate, e5-small. Recommend using this model for non-English languages."),
         }
         ]
     }
@@ -547,8 +554,12 @@ mod tests {
                 vec![0.00961, 0.00443, 0.00658, -0.03532, 0.00703],
             ),
             (
+                EmbeddingModel::MLE5Small,
+                vec![0.04931235, 0.024151761, -0.038471516, -0.08884483, 0.08710265],
+            ),
+            (
                 EmbeddingModel::BGEBaseENV15,
-                vec![0.01129394, 0.05493144, 0.02615099, 0.00328772, 0.02996045],
+                vec![0.011293892, 0.05493144, 0.02615099, 0.00328772, 0.02996045],
             ),
             (
                 EmbeddingModel::BGESmallENV15,
@@ -571,14 +582,16 @@ mod tests {
 
             // Generate embeddings with the default batch size, 256
             let embeddings = model.embed(documents, None).unwrap();
+            // println!("Embeddings: {:#?}", embeddings[0].to_vec());
 
             for (i, v) in expected.into_iter().enumerate() {
                 let difference = (v - embeddings[0][i]).abs();
                 assert!(
                     difference < EPSILON,
-                    "Difference for {}: {}",
+                    "Difference for {}: expected: {} vs got: {}",
                     model_name.to_string(),
-                    difference
+                    v,
+                    embeddings[0][i]
                 )
             }
         }
